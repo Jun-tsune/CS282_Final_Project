@@ -2,9 +2,7 @@ import argparse
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from utils.data_generator import get_regression_batch
-from model_standard import StandardTransformer  # Chage later
-from model_placeholder import CompressiveTransformer  # Chage later
+from data_generator import get_regression_batch
 
 
 def parse_int_list(s):
