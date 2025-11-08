@@ -148,6 +148,7 @@ def main(args):
             name=args.wandb.name,
             resume=True,
         )
+        wandb.log({"args": args})
 
     model = build_model(args.model)
     model.cuda()
@@ -161,35 +162,38 @@ def main(args):
 
 if __name__ == "__main__":
     default_config = {
-        "out_dir": "outputs/",
+        "out_dir": "outputs",
         "model_yaml": "config_model_1",
         'train_yaml': 'config_train_1',
     }
     cfg = OmegaConf.create(default_config)
+
+    # Receive command line arguments and merge with config
     cli_cfg = OmegaConf.from_cli()
     cfg = OmegaConf.merge(cfg, cli_cfg)
 
+    # Load configuration files
     cfg.model_yaml = os.path.join("src/config/config_model/", cfg.model_yaml + ".yaml")
     cfg.train_yaml = os.path.join("src/config/config_train/", cfg.train_yaml + ".yaml")
     cfg_model = OmegaConf.load(cfg.model_yaml)
     cfg_train = OmegaConf.load(cfg.train_yaml)
+
+    # Load standard config which is not changed frequently
     cfg_standard = OmegaConf.load(os.path.join("src/config/", "standard.yaml"))
 
+    # Merge all configurations
     args = OmegaConf.merge(cfg, cfg_standard, cfg_model, cfg_train)
 
+    # Create output directory and save final config
+    run_id = args.training.resume_id
+    if run_id is None:
+        run_id = str(uuid.uuid4())
+    out_dir = os.path.join(args.out_dir, 'id_' + str(run_id))
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+    args.out_dir = out_dir
+    OmegaConf.save(args, os.path.join(out_dir, "config.yaml"))
+
     print(f"Running with: {args}")
-
-    # if not args.test_run:
-    #     run_id = args.training.resume_id
-    #     if run_id is None:
-    #         run_id = str(uuid.uuid4())
-
-    #     out_dir = os.path.join(args.out_dir, run_id)
-    #     if not os.path.exists(out_dir):
-    #         os.makedirs(out_dir)
-    #     args.out_dir = out_dir
-
-    #     with open(os.path.join(out_dir, "config.yaml"), "w") as yaml_file:
-    #         yaml.dump(args.__dict__, yaml_file, default_flow_style=False)
 
     # main(args)

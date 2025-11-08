@@ -1,0 +1,39 @@
+out_dir: outputs/id_1
+model_yaml: src/config/config_model/config_model_1.yaml
+train_yaml: src/config/config_train/config_train_1.yaml
+wandb:
+  project: in-context-training
+  entity: UC_Berkeley_CS282
+  notes: null
+  log_every_steps: 100
+model:
+  model_family: transformer
+  n_embd: 256
+  n_layer: 2
+  n_head: 8
+  n_dims: 10
+  n_positions: 128
+  embd_pdrop: 0.1
+  resid_pdrop: 0.0
+  attn_pdrop: 0.0
+training:
+  task: linear_regression
+  data: gaussian
+  task_kwargs: {}
+  batch_size: 64
+  learning_rate: 0.0001
+  save_every_steps: 1000
+  keep_every_steps: 100000
+  train_steps: 5001
+  resume_id: 1
+  curriculum:
+    dims:
+      start: 5
+      end: 5
+      inc: 1
+      interval: 2000
+    points:
+      start: 11
+      end: 11
+      inc: 2
+      interval: 2000
