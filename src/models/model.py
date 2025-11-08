@@ -1,4 +1,4 @@
-from transformer import *
+from src.models.transformer_backbone import *
 
 class TransformerModel(nn.Module):
     def __init__(self, n_dims, n_positions, n_embd, n_layer, n_head, resid_pdrop, embd_pdrop, attn_pdrop):

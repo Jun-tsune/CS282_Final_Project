@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from utils_model import ModelConfig
+from src.utils.utils_model import ModelConfig
 
 
 class CausalSelfAttention(nn.Module):
