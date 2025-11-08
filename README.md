@@ -20,8 +20,10 @@ The project is based on the following repositories:
 1. Clone the repository:
    ```bash
    git clone https://github.com/Jun-tsune/CS282_Final_Project.git
-   cd CS282_Final_Project
    ```
+   ```bash
+   cd CS282_Final_Project
+```
 
 2. Install the required packages:
    ```bash
