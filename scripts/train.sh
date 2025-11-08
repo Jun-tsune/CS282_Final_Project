@@ -1,3 +1,3 @@
 #!/bin/bash
 
-python src/transformer.py
+python src/transformer.py # test the transformer implementation
