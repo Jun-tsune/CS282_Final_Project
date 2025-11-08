@@ -12,7 +12,7 @@ class TransformerModel(nn.Module):
             embd_pdrop=embd_pdrop,
             attn_pdrop=attn_pdrop,
         )
-        self.name = f"gpt2_embd={n_embd}_layer={n_layer}_head={n_head}"
+        self.name = f"transformer_embd={n_embd}_layer={n_layer}_head={n_head}"
 
         self.n_positions = n_positions
         self.n_dims = n_dims
@@ -47,3 +47,23 @@ class TransformerModel(nn.Module):
         output = self._backbone(inputs_embeds=embeds).last_hidden_state
         prediction = self._read_out(output)
         return prediction[:, ::2, 0][:, inds]  # predict only on xs
+    
+if __name__ == "__main__":
+    B, S, H = 8, 56, 128
+    x_ctx = torch.randn(B, S, H)
+    y_ctx = torch.randn(B, S, 1)
+
+    model = TransformerModel(
+        n_dims=H,
+        n_positions=512,
+        n_embd=64,
+        n_layer=2,
+        n_head=4,
+        attn_pdrop=0.0,
+        resid_pdrop=0.0,
+        embd_pdrop=0.1,
+    )
+    y_q_pred = model(x_ctx, y_ctx, inds=[0, 2])
+    print("y_q_pred shape 1:", y_q_pred.shape)  # should be [B, len(inds)]
+    y_q_pred = model(x_ctx, y_ctx)
+    print("y_q_pred shape 2:", y_q_pred.shape)  # should be [B, S]
