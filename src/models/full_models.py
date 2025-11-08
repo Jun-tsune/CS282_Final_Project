@@ -54,7 +54,7 @@ class TransformerModel(nn.Module):
 
     
 if __name__ == "__main__":
-    B, S, H = 8, 56, 128
+    B, S, H = 4, 56, 128
     x_ctx = torch.randn(B, S, H)
     y_ctx = torch.randn(B, S, 1)
 
@@ -70,5 +70,6 @@ if __name__ == "__main__":
     )
     y_q_pred = model(x_ctx, y_ctx, inds=[0, 2])
     print("y_q_pred shape 1:", y_q_pred.shape)  # should be [B, len(inds)]
+    print("y_q_pred:", y_q_pred)
     y_q_pred = model(x_ctx, y_ctx)
     print("y_q_pred shape 2:", y_q_pred.shape)  # should be [B, S]
