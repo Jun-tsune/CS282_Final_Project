@@ -9,7 +9,7 @@ from tqdm import tqdm
 import torch
 import yaml
 
-import models
+import models.model as model
 from samplers import get_data_sampler, sample_transformation
 from tasks import get_task_sampler
 
@@ -21,7 +21,7 @@ def get_model_from_run(run_path, step=-1, only_conf=False):
     if only_conf:
         return None, conf
 
-    model = models.build_model(conf.model)
+    model = model.build_model(conf.model)
 
     if step == -1:
         state_path = os.path.join(run_path, "state.pt")
@@ -298,7 +298,7 @@ def get_run_metrics(
         model = model.cuda().eval()
         all_models = [model]
         if not skip_baselines:
-            all_models += models.get_relevant_baselines(conf.training.task)
+            all_models += model.get_relevant_baselines(conf.training.task)
     evaluation_kwargs = build_evals(conf)
 
     if not cache:

@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import torch
 
-
 @torch.no_grad()
 def get_regression_batch(
     batch_size, d, k_context, q_queries=1, noise_std=0.0, device="cpu"
