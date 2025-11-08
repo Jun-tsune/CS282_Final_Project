@@ -1,0 +1,6 @@
+wandb:
+    project: in-context-training
+    entity: UC_Berkeley_CS282
+    notes:
+    log_every_steps: 100
+

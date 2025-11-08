@@ -1,81 +1,195 @@
-import argparse
+import os
+from random import randint
+import uuid
+# from quinine import QuinineArgumentParser
+from tqdm import tqdm
 import torch
-import torch.nn as nn
-import torch.optim as optim
-from utils.data_generator import get_regression_batch
+import yaml
+from eval import get_run_metrics
+from tasks import get_task_sampler
+from src.utils.samplers import get_data_sampler
+from src.utils.utils_train import Curriculum
+# from schema import schema
+from src.utils.utils_model import build_model
+import wandb
+from omegaconf import OmegaConf
+
+torch.backends.cudnn.benchmark = True
 
 
-def parse_int_list(s):
-    return [int(x) for x in s.split(",")] if s else []
+def train_step(model, xs, ys, optimizer, loss_func):
+    optimizer.zero_grad()
+    output = model(xs, ys)
+    loss = loss_func(output, ys)
+    loss.backward()
+    optimizer.step()
+    return loss.detach().item(), output.detach()
 
 
-def main():
-    p = argparse.ArgumentParser()
-    p.add_argument("--d", type=int, default=20)
-    p.add_argument("--train_k", type=int, default=128)  # train context length
-    p.add_argument(
-        "--eval_ks", type=str, default="128,256,512,1024,2048"
-    )  # comma-separated
-    p.add_argument("--q_queries", type=int, default=1)
-    p.add_argument("--batch_size", type=int, default=32)
-    p.add_argument("--steps", type=int, default=5000)
-    p.add_argument("--lr", type=float, default=1e-4)
-    p.add_argument("--noise_std", type=float, default=0.0)
-    p.add_argument(
-        "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
+def sample_seeds(total_seeds, count):
+    seeds = set()
+    while len(seeds) < count:
+        seeds.add(randint(0, total_seeds - 1))
+    return seeds
+
+
+def train(model, args):
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.training.learning_rate)
+    curriculum = Curriculum(args.training.curriculum)
+
+    starting_step = 0
+    state_path = os.path.join(args.out_dir, "state.pt")
+    if os.path.exists(state_path):
+        state = torch.load(state_path)
+        model.load_state_dict(state["model_state_dict"])
+        optimizer.load_state_dict(state["optimizer_state_dict"])
+        starting_step = state["train_step"]
+        for i in range(state["train_step"] + 1):
+            curriculum.update()
+
+    n_dims = model.n_dims
+    bsize = args.training.batch_size
+    data_sampler = get_data_sampler(args.training.data, n_dims=n_dims)
+    task_sampler = get_task_sampler(
+        args.training.task,
+        n_dims,
+        bsize,
+        num_tasks=args.training.num_tasks,
+        **args.training.task_kwargs,
     )
-    p.add_argument(
-        "--model", type=str, choices=["standard", "compressive"], default="standard"
-    )
-    # placeholders for future compressive settings
-    p.add_argument("--memory_ratio", type=str, default="1:1")  # e.g., 1:1,1:4,1:8
-    p.add_argument("--compression", type=str, default="avgpool")  # placeholder
-    args = p.parse_args()
+    pbar = tqdm(range(starting_step, args.training.train_steps))
 
-    device = torch.device(args.device)
-    eval_ks = parse_int_list(args.eval_ks)
+    num_training_examples = args.training.num_training_examples
 
-    # model select
-    if args.model == "standard":
-        model = StandardTransformer(d=args.d).to(device)
-    else:
-        # later: replace with real CompressiveTransformer(**parsed_ratio, compression=...)
-        model = CompressiveTransformer(d=args.d).to(device)
+    for i in pbar:
+        data_sampler_args = {}
+        task_sampler_args = {}
 
-    opt = optim.AdamW(model.parameters(), lr=args.lr)
-    loss_fn = nn.MSELoss()
+        if "sparse" in args.training.task:
+            task_sampler_args["valid_coords"] = curriculum.n_dims_truncated
+        if num_training_examples is not None:
+            assert num_training_examples >= bsize
+            seeds = sample_seeds(num_training_examples, bsize)
+            data_sampler_args["seeds"] = seeds
+            task_sampler_args["seeds"] = [s + 1 for s in seeds]
 
-    # ---------------- Train on train_k
-    model.train()
-    for step in range(1, args.steps + 1):
-        x_ctx, y_ctx, x_q, y_q = get_regression_batch(
-            batch_size=args.batch_size,
-            d=args.d,
-            k_context=args.train_k,
-            q_queries=args.q_queries,
-            noise_std=args.noise_std,
-            device=device,
+        xs = data_sampler.sample_xs(
+            curriculum.n_points,
+            bsize,
+            curriculum.n_dims_truncated,
+            **data_sampler_args,
         )
-        y_hat = model(x_ctx, y_ctx, x_q)
-        loss = loss_fn(y_hat, y_q)
-        opt.zero_grad(set_to_none=True)
-        loss.backward()
-        opt.step()
-        if step % 100 == 0 or step == args.steps:
-            print(f"step {step}/{args.steps}  loss {loss.item():.6f}")
+        task = task_sampler(**task_sampler_args)
+        ys = task.evaluate(xs)
 
-    # ---------------- Evaluate across lengths (cross-length + scaling)
-    model.eval()
-    with torch.no_grad():
-        for k in eval_ks:
-            x_ctx, y_ctx, x_q, y_q = get_regression_batch(
-                batch_size=256,
-                d=args.d,
-                k_context=k,
-                q_queries=args.q_queries,
-                noise_std=args.noise_std,
-                device=device,
+        loss_func = task.get_training_metric()
+
+        loss, output = train_step(model, xs.cuda(), ys.cuda(), optimizer, loss_func)
+
+        point_wise_tags = list(range(curriculum.n_points))
+        point_wise_loss_func = task.get_metric()
+        point_wise_loss = point_wise_loss_func(output, ys.cuda()).mean(dim=0)
+
+        baseline_loss = (
+            sum(
+                max(curriculum.n_dims_truncated - ii, 0)
+                for ii in range(curriculum.n_points)
             )
-            y_hat = model(x_ctx, y_ctx, x_q)
-            val_loss = loss_fn(y_hat, y_q).item()
-            print(f"[eval] K={k}  val_mse {val_loss:.6f}")
+            / curriculum.n_points
+        )
+
+        if i % args.wandb.log_every_steps == 0 and not args.test_run:
+            wandb.log(
+                {
+                    "overall_loss": loss,
+                    "excess_loss": loss / baseline_loss,
+                    "pointwise/loss": dict(
+                        zip(point_wise_tags, point_wise_loss.cpu().numpy())
+                    ),
+                    "n_points": curriculum.n_points,
+                    "n_dims": curriculum.n_dims_truncated,
+                },
+                step=i,
+            )
+
+        curriculum.update()
+
+        pbar.set_description(f"loss {loss}")
+        if i % args.training.save_every_steps == 0 and not args.test_run:
+            training_state = {
+                "model_state_dict": model.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "train_step": i,
+            }
+            torch.save(training_state, state_path)
+
+        if (
+            args.training.keep_every_steps > 0
+            and i % args.training.keep_every_steps == 0
+            and not args.test_run
+            and i > 0
+        ):
+            torch.save(model.state_dict(), os.path.join(args.out_dir, f"model_{i}.pt"))
+
+
+def main(args):
+    if args.test_run:
+        curriculum_args = args.training.curriculum
+        curriculum_args.points.start = curriculum_args.points.end
+        curriculum_args.dims.start = curriculum_args.dims.end
+        args.training.train_steps = 100
+    else:
+        wandb.init(
+            dir=args.out_dir,
+            project=args.wandb.project,
+            entity=args.wandb.entity,
+            config=args.__dict__,
+            notes=args.wandb.notes,
+            name=args.wandb.name,
+            resume=True,
+        )
+
+    model = build_model(args.model)
+    model.cuda()
+    model.train()
+
+    train(model, args)
+
+    if not args.test_run:
+        _ = get_run_metrics(args.out_dir)  # precompute metrics for eval
+
+
+if __name__ == "__main__":
+    default_config = {
+        "out_dir": "outputs/",
+        "model_yaml": "config_model_1",
+        'train_yaml': 'config_train_1',
+    }
+    cfg = OmegaConf.create(default_config)
+    cli_cfg = OmegaConf.from_cli()
+    cfg = OmegaConf.merge(cfg, cli_cfg)
+
+    cfg.model_yaml = os.path.join("src/config/config_model/", cfg.model_yaml + ".yaml")
+    cfg.train_yaml = os.path.join("src/config/config_train/", cfg.train_yaml + ".yaml")
+    cfg_model = OmegaConf.load(cfg.model_yaml)
+    cfg_train = OmegaConf.load(cfg.train_yaml)
+    cfg_standard = OmegaConf.load(os.path.join("src/config/", "standard.yaml"))
+
+    args = OmegaConf.merge(cfg, cfg_standard, cfg_model, cfg_train)
+
+    print(f"Running with: {args}")
+
+    # if not args.test_run:
+    #     run_id = args.training.resume_id
+    #     if run_id is None:
+    #         run_id = str(uuid.uuid4())
+
+    #     out_dir = os.path.join(args.out_dir, run_id)
+    #     if not os.path.exists(out_dir):
+    #         os.makedirs(out_dir)
+    #     args.out_dir = out_dir
+
+    #     with open(os.path.join(out_dir, "config.yaml"), "w") as yaml_file:
+    #         yaml.dump(args.__dict__, yaml_file, default_flow_style=False)
+
+    # main(args)

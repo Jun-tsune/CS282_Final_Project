@@ -1,0 +1,10 @@
+model:
+    model_family: transformer
+    n_embd: 256
+    n_layer: 2
+    n_head: 8
+    n_dims: 10
+    n_positions: 128
+    embd_pdrop: 0.1
+    resid_pdrop: 0.0
+    attn_pdrop: 0.0
