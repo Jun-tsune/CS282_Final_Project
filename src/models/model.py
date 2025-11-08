@@ -48,6 +48,11 @@ class TransformerModel(nn.Module):
         prediction = self._read_out(output)
         return prediction[:, ::2, 0][:, inds]  # predict only on xs
     
+
+
+
+
+    
 if __name__ == "__main__":
     B, S, H = 8, 56, 128
     x_ctx = torch.randn(B, S, H)
