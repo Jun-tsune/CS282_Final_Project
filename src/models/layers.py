@@ -2,11 +2,10 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from src.utils.utils_model import ModelConfig
 
 
 class CausalSelfAttention(nn.Module):
-    def __init__(self, config: ModelConfig):
+    def __init__(self, config):
         super().__init__()
         assert config.n_embd % config.n_head == 0, "n_embd must be divisible by n_head"
         self.n_head = config.n_head
@@ -65,7 +64,7 @@ class CausalSelfAttention(nn.Module):
 
 
 class FFN(nn.Module):
-    def __init__(self, config: ModelConfig):
+    def __init__(self, config):
         super().__init__()
         inner_dim = 4 * config.n_embd
         self.fc1 = nn.Linear(config.n_embd, inner_dim)

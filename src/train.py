@@ -31,6 +31,8 @@ def sample_seeds(total_seeds, count):
 
 
 def train(model, args):
+    device = torch.device(args.training.device if torch.cuda.is_available() else "cpu")
+    model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.training.learning_rate)
     curriculum = Curriculum(args.training.curriculum)
 
@@ -81,11 +83,11 @@ def train(model, args):
 
         loss_func = task.get_training_metric()
 
-        loss, output = train_step(model, xs.cuda(), ys.cuda(), optimizer, loss_func)
+        loss, output = train_step(model, xs.to(device), ys.to(device), optimizer, loss_func)
 
         point_wise_tags = list(range(curriculum.n_points))
         point_wise_loss_func = task.get_metric()
-        point_wise_loss = point_wise_loss_func(output, ys.cuda()).mean(dim=0)
+        point_wise_loss = point_wise_loss_func(output, ys.to(device)).mean(dim=0)
 
         baseline_loss = (
             sum(
@@ -148,7 +150,6 @@ def main(args):
         wandb.log({"args": args})
 
     model = build_model(args.model)
-    model.cuda()
     model.train()
 
     train(model, args)
@@ -161,7 +162,8 @@ if __name__ == "__main__":
     default_config = {
         "out_dir": "outputs",
         "model_yaml": "config_model_1",
-        'train_yaml': 'config_train_1',
+        "train_yaml": "config_train_1",
+        "test_run": True,
     }
     cfg = OmegaConf.create(default_config)
 
@@ -193,4 +195,4 @@ if __name__ == "__main__":
 
     print(f"Running with: {args}")
 
-    # main(args)
+    main(args)

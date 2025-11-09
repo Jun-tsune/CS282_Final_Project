@@ -1,0 +1,11 @@
+{"time":"2025-11-08T16:10:20.968576-08:00","level":"INFO","msg":"stream: starting","core version":"0.22.3"}
+{"time":"2025-11-08T16:10:21.281715-08:00","level":"WARN","msg":"featurechecker: GraphQL client is nil, skipping feature loading"}
+{"time":"2025-11-08T16:10:21.281885-08:00","level":"INFO","msg":"stream: created new stream","id":"eh4f3tte"}
+{"time":"2025-11-08T16:10:21.281996-08:00","level":"INFO","msg":"handler: started","stream_id":"eh4f3tte"}
+{"time":"2025-11-08T16:10:21.282892-08:00","level":"INFO","msg":"stream: started","id":"eh4f3tte"}
+{"time":"2025-11-08T16:10:21.282985-08:00","level":"INFO","msg":"writer: started","stream_id":"eh4f3tte"}
+{"time":"2025-11-08T16:10:21.283-08:00","level":"INFO","msg":"sender: started","stream_id":"eh4f3tte"}
+{"time":"2025-11-08T16:10:21.283202-08:00","level":"INFO","msg":"stream: closing","id":"eh4f3tte"}
+{"time":"2025-11-08T16:10:21.284816-08:00","level":"INFO","msg":"handler: closed","stream_id":"eh4f3tte"}
+{"time":"2025-11-08T16:10:21.285756-08:00","level":"INFO","msg":"sender: closed","stream_id":"eh4f3tte"}
+{"time":"2025-11-08T16:10:21.285768-08:00","level":"INFO","msg":"stream: closed","id":"eh4f3tte"}

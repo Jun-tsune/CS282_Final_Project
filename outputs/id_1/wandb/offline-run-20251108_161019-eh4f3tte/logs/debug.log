@@ -1,0 +1,13 @@
+2025-11-08 16:10:20,026 INFO    MainThread:47365 [wandb_setup.py:_flush():81] Current SDK version is 0.22.3
+2025-11-08 16:10:20,027 INFO    MainThread:47365 [wandb_setup.py:_flush():81] Configure stats pid to 47365
+2025-11-08 16:10:20,027 INFO    MainThread:47365 [wandb_setup.py:_flush():81] Loading settings from /Users/apple/.config/wandb/settings
+2025-11-08 16:10:20,027 INFO    MainThread:47365 [wandb_setup.py:_flush():81] Loading settings from /Volumes/T7/课程文件/UCB/CS282/CS282_Final_Project/wandb/settings
+2025-11-08 16:10:20,027 INFO    MainThread:47365 [wandb_setup.py:_flush():81] Loading settings from environment variables
+2025-11-08 16:10:20,027 INFO    MainThread:47365 [wandb_init.py:setup_run_log_directory():706] Logging user logs to outputs/id_1/wandb/offline-run-20251108_161019-eh4f3tte/logs/debug.log
+2025-11-08 16:10:20,028 INFO    MainThread:47365 [wandb_init.py:setup_run_log_directory():707] Logging internal logs to outputs/id_1/wandb/offline-run-20251108_161019-eh4f3tte/logs/debug-internal.log
+2025-11-08 16:10:20,028 INFO    MainThread:47365 [wandb_init.py:init():833] calling init triggers
+2025-11-08 16:10:20,028 INFO    MainThread:47365 [wandb_init.py:init():838] wandb.init called with sweep_config: {}
+config: {'_metadata': ContainerMetadata(ref_type=typing.Any, object_type=<class 'dict'>, optional=True, key=None, flags={}, flags_root=False, resolver_cache=defaultdict(<class 'dict'>, {}), key_type=typing.Any, element_type=typing.Any), '_parent': None, '_flags_cache': {'struct': None, 'readonly': None, 'convert': None, 'allow_objects': None}, '_content': {'out_dir': 'outputs/id_1', 'model_yaml': 'src/config/config_model/config_model_1.yaml', 'train_yaml': 'src/config/config_train/config_train_1.yaml', 'test_run': False, 'wandb': {'project': 'in-context-training', 'entity': 'UC_Berkeley_CS282', 'notes': None, 'log_every_steps': 100, 'name': None}, 'model': {'model_family': 'transformer', 'n_embd': 256, 'n_layer': 2, 'n_head': 8, 'n_dims': 10, 'n_positions': 128, 'embd_pdrop': 0.1, 'resid_pdrop': 0.0, 'attn_pdrop': 0.0}, 'training': {'task': 'linear_regression', 'data': 'gaussian', 'task_kwargs': {}, 'batch_size': 64, 'learning_rate': 0.0001, 'save_every_steps': 1000, 'keep_every_steps': 100000, 'train_steps': 5001, 'resume_id': 1, 'device': 'cpu', 'curriculum': {'dims': {'start': 5, 'end': 5, 'inc': 1, 'interval': 2000}, 'points': {'start': 11, 'end': 11, 'inc': 2, 'interval': 2000}}}}, '_wandb': {}}
+2025-11-08 16:10:20,028 INFO    MainThread:47365 [wandb_init.py:init():881] starting backend
+2025-11-08 16:10:20,870 INFO    MainThread:47365 [wandb_init.py:init():884] sending inform_init request
+2025-11-08 16:10:20,908 INFO    MainThread:47365 [wandb_init.py:init():892] backend started and connected

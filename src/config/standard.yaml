@@ -3,4 +3,9 @@ wandb:
     entity: UC_Berkeley_CS282
     notes:
     log_every_steps: 100
+    name:
+
+training:
+    num_tasks:
+    num_training_examples:
 

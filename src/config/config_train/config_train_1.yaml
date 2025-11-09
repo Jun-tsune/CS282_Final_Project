@@ -8,6 +8,7 @@ training:
     keep_every_steps: 100000
     train_steps: 5001
     resume_id: 1
+    device: cpu
     curriculum:
         dims:
             start: 5
