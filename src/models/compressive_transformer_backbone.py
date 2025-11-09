@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 import torch
 import torch.nn as nn
-from src.models.transformer_backbone import ModelConfig
+from src.utils.utils import ModelConfig
 from src.models.layers import CausalSelfAttention, FFN
 
 

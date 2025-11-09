@@ -1,6 +1,7 @@
 from src.models.full_models import TransformerModel
+from src.utils.utils import ModelConfig
 
-def build_model(conf):
+def build_model(conf: ModelConfig):
     if conf.model_family == "transformer":
         model = TransformerModel(
             n_dims=conf.n_dims, # input feature dimension
