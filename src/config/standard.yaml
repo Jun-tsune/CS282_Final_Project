@@ -1,3 +1,5 @@
+# Configuration that does not always need to be changed
+
 wandb:
     project: in-context-training
     entity: UC_Berkeley_CS282
