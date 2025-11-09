@@ -1,22 +1,25 @@
-name: in-context-learning
+name: env_282PJ
 channels:
-  - pytorch
-  - defaults
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/pytorch/
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/
+  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/r/
 dependencies:
-  # - pip=21.2.4
   - python=3.9
   - pytorch
   - pip:
+    - pip==25.3
     - jupyter==1.0.0
-    - matplotlib==3.5.2
-    - numpy==1.22.3
-    - pandas==1.4.2
-    - quinine==0.3.0
-    - scikit-learn==1.0.2
-    - seaborn==0.11.2
-    - tqdm==4.64.0
+    - matplotlib==3.8.4
+    - numpy==1.26.4
+    - pandas==2.2.1
+    - scikit-learn==1.4.1.post1
+    - seaborn==0.13.2
+    - tqdm==4.66.2
     - transformers==4.17.0
-    - wandb==0.12.11
+    - wandb==0.22.3
     - xgboost==1.6.1
     - protobuf==3.20.1
-    - omegaconf
+    - omegaconf==2.3.0
+    - munch==4.0.0

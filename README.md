@@ -28,7 +28,8 @@ The project is based on the following repositories:
 
 2. Install the required packages:
    ```bash
-   pip install -r requirements.txt
+   conda env create -f environment.yml
+   conda activate env_282PJ
    ```
 
 3. Run the training script:
