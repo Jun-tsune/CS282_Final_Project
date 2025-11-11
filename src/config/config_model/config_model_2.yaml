@@ -1,0 +1,15 @@
+model:
+    model_family: compressive
+    n_embd: 256
+    n_layer: 2
+    n_head: 8
+    n_dims: 10
+    n_positions: 128
+    embd_pdrop: 0.1
+    resid_pdrop: 0.0
+    attn_pdrop: 0.0
+    mem_len: 128
+    cmem_ratio: 4
+    cmem_len: 32
+    recon_attn_dropout: 0.0
+    reconstruction_loss_weight: 0.05

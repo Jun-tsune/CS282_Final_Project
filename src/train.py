@@ -14,13 +14,22 @@ from omegaconf import OmegaConf
 torch.backends.cudnn.benchmark = True
 
 
-def train_step(model, xs, ys, optimizer, loss_func):
+def train_step(model, xs, ys, optimizer, loss_func, recon_weight):
     optimizer.zero_grad()
     output = model(xs, ys)
-    loss = loss_func(output, ys)
+    if isinstance(output, tuple):
+        # Compressive Transformer case
+        y_pred, memory, aux_loss = output
+        task_loss = loss_func(y_pred, ys)
+        loss = task_loss + recon_weight * (aux_loss if isinstance(aux_loss, torch.Tensor) else 0.0)
+    else:
+        # Normal Transformer case
+        y_pred = output
+        loss = loss_func(y_pred, ys)
+
     loss.backward()
     optimizer.step()
-    return loss.detach().item(), output.detach()
+    return loss.detach().item(), y_pred.detach()
 
 
 def sample_seeds(total_seeds, count):
@@ -35,6 +44,11 @@ def train(model, args):
     model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.training.learning_rate)
     curriculum = Curriculum(args.training.curriculum)
+    
+    try:
+        recon_weight = float(getattr(args.model, "reconstruction_loss_weight", 0.0))
+    except Exception:
+        recon_weight = 0.0
 
     starting_step = 0
     state_path = os.path.join(args.out_dir, "state.pt")
@@ -83,7 +97,7 @@ def train(model, args):
 
         loss_func = task.get_training_metric()
 
-        loss, output = train_step(model, xs.to(device), ys.to(device), optimizer, loss_func)
+        loss, output = train_step(model, xs.to(device), ys.to(device), optimizer, loss_func, recon_weight)
 
         point_wise_tags = list(range(curriculum.n_points))
         point_wise_loss_func = task.get_metric()

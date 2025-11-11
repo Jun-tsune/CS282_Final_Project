@@ -1,5 +1,5 @@
-out_dir: outputs/id_1
-model_yaml: src/config/config_model/config_model_1.yaml
+out_dir: outputs\id_1
+model_yaml: src/config/config_model/config_model_2.yaml
 train_yaml: src/config/config_train/config_train_1.yaml
 test_run: true
 wandb:
@@ -33,7 +33,7 @@ training:
       inc: 2
       interval: 2000
 model:
-  model_family: transformer
+  model_family: compressive
   n_embd: 256
   n_layer: 2
   n_head: 8
@@ -42,3 +42,8 @@ model:
   embd_pdrop: 0.1
   resid_pdrop: 0.0
   attn_pdrop: 0.0
+  mem_len: 128
+  cmem_ratio: 4
+  cmem_len: 32
+  recon_attn_dropout: 0.0
+  reconstruction_loss_weight: 0.05
