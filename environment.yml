@@ -8,8 +8,8 @@ channels:
 dependencies:
   - python=3.9
   - pytorch
+  - pip
   - pip:
-    - pip==25.3
     - jupyter==1.0.0
     - matplotlib==3.8.4
     - numpy==1.26.4
