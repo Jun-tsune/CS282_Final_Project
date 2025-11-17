@@ -297,7 +297,7 @@ def get_run_metrics(
         model = model.cuda().eval()
         all_models = [model]
         if not skip_baselines:
-            all_models += model.get_relevant_baselines(conf.training.task)
+            all_models += full_models.get_relevant_baselines(model, conf.training.task)
     evaluation_kwargs = build_evals(conf)
 
     if not cache:

@@ -204,6 +204,11 @@ def build_model(conf_model):
     else:
         raise ValueError(f"Unknown model_family: {family}")
 
+def get_relevant_baselines(model, task):
+    # Placeholder implementation: This function was not found in the original files.
+    # It has been added as a stub to resolve an AttributeError.
+    # Please implement the actual logic for getting relevant baselines.
+    return [model]
     
 if __name__ == "__main__":
     B, S, H = 4, 56, 128
