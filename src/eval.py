@@ -20,7 +20,7 @@ def get_model_from_run(run_path, step=-1, only_conf=False):
     if only_conf:
         return None, conf
 
-    model = model.build_model(conf.model)
+    model = full_models.build_model(conf.model)
 
     if step == -1:
         state_path = os.path.join(run_path, "state.pt")

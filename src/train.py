@@ -152,16 +152,16 @@ def main(args):
         curriculum_args.dims.start = curriculum_args.dims.end
         args.training.train_steps = 100
     else:
+        cfg_for_wandb = OmegaConf.to_container(args, resolve=True)
         wandb.init(
             dir=args.out_dir,
             project=args.wandb.project,
-            entity=args.wandb.entity,
-            config=args.__dict__,
+            config=cfg_for_wandb,
             notes=args.wandb.notes,
             name=args.wandb.name,
             resume=True,
         )
-        wandb.log({"args": args})
+        wandb.log({"args": cfg_for_wandb})
 
     model = build_model(args.model)
     model.train()
