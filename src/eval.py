@@ -245,10 +245,12 @@ def build_evals(conf):
 
             evaluation_kwargs[f"scale-{dim}={scale}"] = scaling_args
 
+    """
     evaluation_kwargs[f"noisyLR"] = {
         "task_sampler_kwargs": {"renormalize_ys": True, "noise_std": 1},
         "task_name": "noisy_linear_regression",
     }
+    """
 
     for name, kwargs in evaluation_kwargs.items():
         # allow kwargs to override base_kwargs values
