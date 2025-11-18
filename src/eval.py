@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+import glob
 
 from munch import Munch
 import numpy as np
@@ -10,6 +11,7 @@ import torch
 import yaml
 import models.full_models as full_models
 from src.utils.samplers import get_data_sampler, sample_transformation
+from src.utils.utils_model import build_model
 from tasks import get_task_sampler
 
 
@@ -20,14 +22,43 @@ def get_model_from_run(run_path, step=-1, only_conf=False):
     if only_conf:
         return None, conf
 
-    model = model.build_model(conf.model)
+    model = build_model(conf.model)
 
     if step == -1:
+        # Try to load state.pt first (latest checkpoint)
         state_path = os.path.join(run_path, "state.pt")
-        state = torch.load(state_path)
-        model.load_state_dict(state["model_state_dict"])
+        if os.path.exists(state_path):
+            state = torch.load(state_path)
+            model.load_state_dict(state["model_state_dict"])
+        else:
+            # If state.pt doesn't exist, try to find the latest model_*.pt file
+            model_files = glob.glob(os.path.join(run_path, "model_*.pt"))
+            if model_files:
+                # Sort by step number and get the latest one
+                def get_step(fname):
+                    basename = os.path.basename(fname)
+                    try:
+                        return int(basename.replace("model_", "").replace(".pt", ""))
+                    except:
+                        return -1
+                model_files.sort(key=get_step, reverse=True)
+                latest_model = model_files[0]
+                print(f"Warning: state.pt not found, using latest checkpoint: {os.path.basename(latest_model)}")
+                state_dict = torch.load(latest_model)
+                model.load_state_dict(state_dict)
+            else:
+                raise FileNotFoundError(
+                    f"No checkpoint files found in {run_path}. "
+                    f"Training may not have completed yet. "
+                    f"Expected files: state.pt or model_*.pt"
+                )
     else:
         model_path = os.path.join(run_path, f"model_{step}.pt")
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(
+                f"Checkpoint file not found: {model_path}. "
+                f"Available checkpoints may have different step numbers."
+            )
         state_dict = torch.load(model_path)
         model.load_state_dict(state_dict)
 
@@ -37,17 +68,34 @@ def get_model_from_run(run_path, step=-1, only_conf=False):
 # Functions for evaluation
 
 
+def _get_model_device(model):
+    """Infer the device a model is currently on."""
+    if hasattr(model, "device"):
+        dev = getattr(model, "device")
+        if isinstance(dev, torch.device):
+            return dev
+        return torch.device(dev)
+
+    try:
+        param = next(model.parameters())
+        return param.device
+    except StopIteration:
+        # Model without parameters defaults to CPU
+        return torch.device("cpu")
+    except AttributeError:
+        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
 def eval_batch(model, task_sampler, xs, xs_p=None):
     task = task_sampler()
-    if torch.cuda.is_available() and model.name.split("_")[0] in ["gpt2", "lstm"]:
-        device = "cuda"
-    else:
-        device = "cpu"
+    device = _get_model_device(model)
 
     if xs_p is None:
         ys = task.evaluate(xs)
-        pred = model(xs.to(device), ys.to(device)).detach()
-        metrics = task.get_metric()(pred.cpu(), ys)
+        output = model(xs.to(device), ys.to(device))
+        preds = output[0] if isinstance(output, tuple) else output
+        preds = preds.detach()
+        metrics = task.get_metric()(preds.cpu(), ys)
     else:
         b_size, n_points, _ = xs.shape
         metrics = torch.zeros(b_size, n_points)
@@ -55,8 +103,10 @@ def eval_batch(model, task_sampler, xs, xs_p=None):
             xs_comb = torch.cat((xs[:, :i, :], xs_p[:, i:, :]), dim=1)
             ys = task.evaluate(xs_comb)
 
-            pred = model(xs_comb.to(device), ys.to(device), inds=[i]).detach()
-            metrics[:, i] = task.get_metric()(pred.cpu(), ys)[:, i]
+            output = model(xs_comb.to(device), ys.to(device), inds=[i])
+            preds = output[0] if isinstance(output, tuple) else output
+            preds = preds.detach()
+            metrics[:, i] = task.get_metric()(preds.cpu(), ys)[:, i]
 
     return metrics
 
@@ -188,7 +238,14 @@ def eval_model(
     return aggregate_metrics(metrics)
 
 
-def build_evals(conf):
+def build_evals(conf, only_standard=True):
+    """
+    Build evaluation configurations.
+    
+    Args:
+        conf: Configuration object
+        only_standard: If True, only evaluate 'standard' strategy (default: True)
+    """
     n_dims = conf.model.n_dims
     n_points = conf.training.curriculum.points.end
     batch_size = conf.training.batch_size
@@ -208,6 +265,16 @@ def build_evals(conf):
     evaluation_kwargs = {}
 
     evaluation_kwargs["standard"] = {"prompting_strategy": "standard"}
+    
+    # If only_standard is True, return early with just the standard strategy
+    if only_standard:
+        for name, kwargs in evaluation_kwargs.items():
+            # allow kwargs to override base_kwargs values
+            evaluation_kwargs[name] = base_kwargs.copy()
+            evaluation_kwargs[name].update(kwargs)
+        return evaluation_kwargs
+    
+    # Below code only runs if only_standard is False
     if task_name != "linear_regression":
         if task_name in ["relu_2nn_regression"]:
             evaluation_kwargs["linear_regression"] = {"task_name": "linear_regression"}
@@ -248,11 +315,6 @@ def build_evals(conf):
 
             evaluation_kwargs[f"scale-{dim}={scale}"] = scaling_args
 
-    evaluation_kwargs[f"noisyLR"] = {
-        "task_sampler_kwargs": {"renormalize_ys": True, "noise_std": 1},
-        "task_name": "noisy_linear_regression",
-    }
-
     for name, kwargs in evaluation_kwargs.items():
         # allow kwargs to override base_kwargs values
         evaluation_kwargs[name] = base_kwargs.copy()
@@ -287,8 +349,19 @@ def compute_evals(all_models, evaluation_kwargs, save_path=None, recompute=False
 
 
 def get_run_metrics(
-    run_path, step=-1, cache=True, skip_model_load=False, skip_baselines=False
+    run_path, step=-1, cache=True, skip_model_load=False, skip_baselines=False, only_standard=True
 ):
+    """
+    Get evaluation metrics for a run.
+    
+    Args:
+        run_path: Path to the run directory
+        step: Checkpoint step to load (-1 for latest)
+        cache: Whether to use cached metrics
+        skip_model_load: If True, skip loading the model
+        skip_baselines: If True, skip baseline models
+        only_standard: If True, only evaluate 'standard' strategy (default: True)
+    """
     if skip_model_load:
         _, conf = get_model_from_run(run_path, only_conf=True)
         all_models = []
@@ -297,8 +370,13 @@ def get_run_metrics(
         model = model.cuda().eval()
         all_models = [model]
         if not skip_baselines:
-            all_models += model.get_relevant_baselines(conf.training.task)
-    evaluation_kwargs = build_evals(conf)
+            # Check if model has get_relevant_baselines method
+            if hasattr(model, 'get_relevant_baselines'):
+                all_models += model.get_relevant_baselines(conf.training.task)
+            else:
+                # If method doesn't exist, skip baselines (for custom models)
+                pass
+    evaluation_kwargs = build_evals(conf, only_standard=only_standard)
 
     if not cache:
         save_path = None
@@ -389,10 +467,72 @@ def read_run_dir(run_dir):
     return df
 
 if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python src/eval.py <run_dir or run_id> [--all-strategies]")
+        print("  --all-strategies: Evaluate all strategies (default: only 'standard')")
+        sys.exit(1)
+    
     run_dir = sys.argv[1]
-    for task in os.listdir(run_dir):
-        task_dir = os.path.join(run_dir, task)
-        print(f"Evaluating task {task}")
-        for run_id in tqdm(os.listdir(task_dir)):
-            run_path = os.path.join(run_dir, task, run_id)
-            metrics = get_run_metrics(run_path)
+    
+    # Check if --all-strategies flag is provided
+    only_standard = True  # Default: only evaluate standard strategy
+    if len(sys.argv) > 2:
+        if "--all-strategies" in sys.argv:
+            only_standard = False
+        elif "--only-standard" in sys.argv:
+            only_standard = True
+    
+    # Also check environment variable
+    if os.environ.get("EVAL_ALL_STRATEGIES", "").lower() in ("1", "true", "yes"):
+        only_standard = False
+    elif os.environ.get("EVAL_ONLY_STANDARD", "").lower() in ("1", "true", "yes"):
+        only_standard = True
+    
+    if only_standard:
+        print("Evaluation mode: Only 'standard' strategy (use --all-strategies to evaluate all)")
+    else:
+        print("Evaluation mode: All strategies")
+    
+    # Normalize path (handle relative paths)
+    if not os.path.isabs(run_dir):
+        run_dir = os.path.abspath(run_dir)
+    
+    # Check if the input path is a single run directory (contains config.yaml)
+    config_path = os.path.join(run_dir, "config.yaml")
+    
+    # Check if it's a single run directory
+    if os.path.isfile(config_path):
+        # Single run directory - evaluate directly
+        print(f"Evaluating run: {run_dir}")
+        metrics = get_run_metrics(run_dir, only_standard=only_standard)
+    elif os.path.isdir(run_dir):
+        # Directory containing multiple task directories or run directories
+        # First check if it contains run directories directly (with config.yaml)
+        has_run_dirs = False
+        for item in os.listdir(run_dir):
+            item_path = os.path.join(run_dir, item)
+            if os.path.isdir(item_path):
+                item_config = os.path.join(item_path, "config.yaml")
+                if os.path.isfile(item_config):
+                    # This is a run directory
+                    has_run_dirs = True
+                    print(f"Evaluating run: {item_path}")
+                    metrics = get_run_metrics(item_path, only_standard=only_standard)
+        
+        if not has_run_dirs:
+            # Directory containing multiple task directories
+            for task in os.listdir(run_dir):
+                task_dir = os.path.join(run_dir, task)
+                # Skip if not a directory
+                if not os.path.isdir(task_dir):
+                    continue
+                print(f"Evaluating task {task}")
+                for run_id in tqdm(os.listdir(task_dir)):
+                    run_path = os.path.join(run_dir, task, run_id)
+                    # Skip if not a directory
+                    if not os.path.isdir(run_path):
+                        continue
+                    metrics = get_run_metrics(run_path, only_standard=only_standard)
+    else:
+        print(f"Error: {run_dir} is not a valid directory or file")
+        sys.exit(1)
