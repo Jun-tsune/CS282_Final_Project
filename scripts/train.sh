@@ -28,27 +28,27 @@ MODEL_YAML="$1"
 TRAIN_YAML="$2"
 RUN_ID="$3"
 
-# Activate conda environment
-if command -v conda &> /dev/null; then
-    # Try to initialize conda if not already initialized
-    if [ -z "$CONDA_DEFAULT_ENV" ]; then
-        source ~/.bashrc 2>/dev/null || true
-        # Try common conda initialization paths
-        if [ -f "$HOME/anaconda3/etc/profile.d/conda.sh" ]; then
-            source "$HOME/anaconda3/etc/profile.d/conda.sh"
-        elif [ -f "$HOME/miniconda3/etc/profile.d/conda.sh" ]; then
-            source "$HOME/miniconda3/etc/profile.d/conda.sh"
-        fi
-    fi
-    conda activate env_282PJ 2>/dev/null || {
-        echo "Warning: Could not activate conda environment env_282PJ"
-        echo "Make sure conda is initialized and environment exists"
-        echo "You may need to run: conda activate env_282PJ manually"
-    }
-else
-    echo "Warning: conda not found, skipping environment activation"
-    echo "Make sure Python dependencies are available in current environment"
-fi
+# # Activate conda environment
+# if command -v conda &> /dev/null; then
+#     # Try to initialize conda if not already initialized
+#     if [ -z "$CONDA_DEFAULT_ENV" ]; then
+#         source ~/.bashrc 2>/dev/null || true
+#         # Try common conda initialization paths
+#         if [ -f "$HOME/anaconda3/etc/profile.d/conda.sh" ]; then
+#             source "$HOME/anaconda3/etc/profile.d/conda.sh"
+#         elif [ -f "$HOME/miniconda3/etc/profile.d/conda.sh" ]; then
+#             source "$HOME/miniconda3/etc/profile.d/conda.sh"
+#         fi
+#     fi
+#     conda activate env_282PJ 2>/dev/null || {
+#         echo "Warning: Could not activate conda environment env_282PJ"
+#         echo "Make sure conda is initialized and environment exists"
+#         echo "You may need to run: conda activate env_282PJ manually"
+#     }
+# else
+#     echo "Warning: conda not found, skipping environment activation"
+#     echo "Make sure Python dependencies are available in current environment"
+# fi
 
 # Extract model type and sequence length from yaml names for naming
 # Remove 'config_model_' or 'config_train_' prefix
