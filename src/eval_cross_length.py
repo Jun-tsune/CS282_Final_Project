@@ -7,6 +7,7 @@ import torch
 from src.eval import get_model_from_run, eval_model, build_evals
 
 
+# This code is only for Experiment4
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
