@@ -14,12 +14,19 @@ from omegaconf import OmegaConf
 torch.backends.cudnn.benchmark = True
 
 
-def train_step(model, xs, ys, optimizer, loss_func, recon_weight):
+def train_step(model, xs, ys, optimizer, loss_func, recon_weight, memory_state=None):
     optimizer.zero_grad()
-    output = model(xs, ys)
+
+    if memory_state is not None:
+        output = model(xs, ys, memories=memory_state)
+    else:
+        output = model(xs, ys)
+    
+    new_memory_state = memory_state
+    
     if isinstance(output, tuple):
         # Compressive Transformer case
-        y_pred, memory, aux_loss = output
+        y_pred, new_memory_state, aux_loss = output
         task_loss = loss_func(y_pred, ys)
         loss = task_loss + recon_weight * (aux_loss if isinstance(aux_loss, torch.Tensor) else 0.0)
     else:
@@ -29,7 +36,7 @@ def train_step(model, xs, ys, optimizer, loss_func, recon_weight):
 
     loss.backward()
     optimizer.step()
-    return loss.detach().item(), y_pred.detach()
+    return loss.detach().item(), y_pred.detach(), new_memory_state
 
 
 def sample_seeds(total_seeds, count):
@@ -87,7 +94,7 @@ def train(model, args):
     starting_step = 0
     state_path = os.path.join(args.out_dir, "state.pt")
     if os.path.exists(state_path):
-        state = torch.load(state_path)
+        state = torch.load(state_path, map_location=device)
         model.load_state_dict(state["model_state_dict"])
         optimizer.load_state_dict(state["optimizer_state_dict"])
         starting_step = state["train_step"]
@@ -107,6 +114,8 @@ def train(model, args):
     pbar = tqdm(range(starting_step, args.training.train_steps))
 
     num_training_examples = args.training.num_training_examples
+
+    memory_state = None
 
     for i in pbar:
         data_sampler_args = {}
@@ -131,7 +140,7 @@ def train(model, args):
 
         loss_func = task.get_training_metric()
 
-        loss, output = train_step(model, xs.to(device), ys.to(device), optimizer, loss_func, recon_weight)
+        loss, output, memory_state = train_step(model, xs.to(device), ys.to(device), optimizer, loss_func, recon_weight, memory_state=memory_state)
 
         point_wise_tags = list(range(curriculum.n_points))
         point_wise_loss_func = task.get_metric()

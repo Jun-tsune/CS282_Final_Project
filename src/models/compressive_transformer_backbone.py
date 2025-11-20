@@ -272,6 +272,7 @@ class CompressTransformerBackBone(nn.Module):
 if __name__ == "__main__":
     cfg = CompressModelConfig(
         n_positions=64,      # chunk_size
+        n_positions=64,      # chunk_size
         n_embd=128,
         n_layer=4,
         n_head=8,
@@ -281,11 +282,21 @@ if __name__ == "__main__":
 
         mem_len=64,          # Maximum 64 tokens per layer memory
         cmem_ratio=4,        # Compress 4 tokens into 1
+        mem_len=64,          # Maximum 64 tokens per layer memory
+        cmem_ratio=4,        # Compress 4 tokens into 1
         recon_attn_dropout=0.0,
         reconstruction_loss_weight=1.0,
     )
     model = CompressTransformerBackBone(cfg)
 
+    B = 2
+    T = 3 * cfg.n_positions   # Create a sequence much longer than n_positions (e.g., 3 chunks)
+    H = cfg.n_embd
+
+    # Create a long sequence
+    x_long = torch.randn(B, T, H)
+
+    # Run in chunked mode for testing
     B = 2
     T = 3 * cfg.n_positions   # Create a sequence much longer than n_positions (e.g., 3 chunks)
     H = cfg.n_embd
