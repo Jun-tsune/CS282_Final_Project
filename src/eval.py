@@ -35,15 +35,17 @@ def get_model_from_run(run_path, step=-1, only_conf=False):
 
 
 # Functions for evaluation
-
-
 def eval_batch(model, task_sampler, xs, xs_p=None):
     task = task_sampler()
     device = next(model.parameters()).device
 
     if xs_p is None:
         ys = task.evaluate(xs)
-        pred = model(xs.to(device), ys.to(device)).detach()
+        output = model(xs.to(device), ys.to(device))
+        if isinstance(output, tuple):
+            pred = output[0]
+        else:
+            pred = output.detach()
         metrics = task.get_metric()(pred.cpu(), ys)
     else:
         b_size, n_points, _ = xs.shape
@@ -52,7 +54,11 @@ def eval_batch(model, task_sampler, xs, xs_p=None):
             xs_comb = torch.cat((xs[:, :i, :], xs_p[:, i:, :]), dim=1)
             ys = task.evaluate(xs_comb)
 
-            pred = model(xs_comb.to(device), ys.to(device), inds=[i]).detach()
+            output = model(xs_comb.to(device), ys.to(device), inds=[i]).detach()
+            if isinstance(output, tuple):
+                pred = output[0]
+            else:
+                pred = output.detach()
             metrics[:, i] = task.get_metric()(pred.cpu(), ys)[:, i]
 
     return metrics
@@ -317,7 +323,6 @@ def get_run_metrics(
     return all_metrics
 
 
-
 def conf_to_model_name(conf):
     if conf.model.family == "gpt2":
         return {
@@ -386,6 +391,7 @@ def read_run_dir(run_dir):
     df = pd.DataFrame(all_runs).sort_values("run_name")
     assert len(df) == len(df.run_name.unique())
     return df
+
 
 if __name__ == "__main__":
     run_dir = sys.argv[1]
