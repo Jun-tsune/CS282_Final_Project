@@ -59,7 +59,7 @@ TRAIN_BASE=$(echo "$TRAIN_YAML" | sed 's/^config_train_//')
 if [ -z "$RUN_ID" ]; then
     TIMESTAMP=$(date +%Y%m%d_%H%M%S)
     # Use model_base as the base for run_id (e.g., comp_seq256 -> comp_seq256_timestamp)
-    RUN_ID="${MODEL_BASE}_${TIMESTAMP}"
+    RUN_ID="${MODEL_BASE}_${TRAIN_BASE}_${TIMESTAMP}"
 fi
 
 # Generate log file name based on model and train yaml
@@ -95,6 +95,7 @@ python src/train.py \
     model_yaml="${MODEL_YAML}" \
     train_yaml="${TRAIN_YAML}" \
     training.resume_id="${RUN_ID}" \
+    wandb.name="${RUN_ID}" \
     training.device='cuda'
 
 TRAIN_EXIT_CODE=$?

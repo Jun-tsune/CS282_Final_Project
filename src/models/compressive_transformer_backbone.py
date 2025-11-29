@@ -272,7 +272,6 @@ class CompressTransformerBackBone(nn.Module):
 if __name__ == "__main__":
     cfg = CompressModelConfig(
         n_positions=64,      # chunk_size
-        n_positions=64,      # chunk_size
         n_embd=128,
         n_layer=4,
         n_head=8,
@@ -280,10 +279,8 @@ if __name__ == "__main__":
         embd_pdrop=0.1,
         attn_pdrop=0.1,
 
-        mem_len=64,          # Maximum 64 tokens per layer memory
         cmem_ratio=4,        # Compress 4 tokens into 1
         mem_len=64,          # Maximum 64 tokens per layer memory
-        cmem_ratio=4,        # Compress 4 tokens into 1
         recon_attn_dropout=0.0,
         reconstruction_loss_weight=1.0,
     )

@@ -16,8 +16,8 @@ training:
             inc: 1
             interval: 20000
         points:
-            start: 256
-            end: 256
+            start: 2048
+            end: 2048
             inc: 1
             interval: 20000
 
