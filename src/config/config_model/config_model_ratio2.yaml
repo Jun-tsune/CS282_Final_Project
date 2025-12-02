@@ -13,4 +13,3 @@ model:
     cmem_len: 128
     recon_attn_dropout: 0.0
     reconstruction_loss_weight: 0.05
-
