@@ -136,6 +136,9 @@ class CompressiveTransformerModel(nn.Module):
           next_memories: Memory(mem=[L,B,T,H], compressed_mem=[L,B,Tc,H])
           aux_loss: scalar tensor (reconstruction MSE between old_mem attention and cmem attention)
           hidden_states (optional): same convention as baseline backbone when requested
+        
+        Forward pass - automatically uses chunked processing when needed.
+        If sequence <= n_positions, processes as single chunk (no overhead).
         """
         if inds is None:
             inds = torch.arange(ys.shape[1], device=ys.device)
@@ -147,13 +150,14 @@ class CompressiveTransformerModel(nn.Module):
         zs = self._combine(xs, ys)                 # [B, 2S, D]
         embeds = self._read_in(zs)                 # [B, 2S, H]
 
-        # Backbone returns (SimpleNamespace, Memory, aux_loss)
-        out, next_memories, aux_loss = self._backbone(
+        # Always use forward_chunked - it handles both short and long sequences
+        out, next_memories, aux_loss = self._backbone.forward_chunked(
             inputs_embeds=embeds,
             attention_mask=attention_mask,
             memories=memories,
             output_hidden_states=output_hidden_states,
             enhanced_recurrence=enhanced_recurrence,
+            chunk_size=None,  # None = use default (n_positions)
         )
 
         # Read out on the full interleaved sequence then take only xs time steps (even indices)
@@ -162,8 +166,7 @@ class CompressiveTransformerModel(nn.Module):
 
         if output_hidden_states:
             return preds, next_memories, aux_loss, out.hidden_states
-        return preds, next_memories, aux_loss
-    
+        return preds, next_memories, aux_loss    
 
 
     
