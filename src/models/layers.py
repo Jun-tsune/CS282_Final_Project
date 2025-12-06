@@ -230,8 +230,8 @@ class CompressCausalSelfAttention(nn.Module):
         aux_loss = torch.zeros(1, device=device, dtype=dtype, requires_grad=True)
 
         # edge case
-        if self.seq_len and (S < self.seq_len or not calc_memory):
-            return out, Memory(new_mem, new_cmem), aux_loss
+        # if self.seq_len and (S < self.seq_len or not calc_memory):
+        #     return out, Memory(new_mem, new_cmem), aux_loss
 
         # FIFO queue: generate new mem；old mem go to cmem
         old_mem, new_mem = queue_fifo(mem, x, length=self.mem_len, dim=1)
