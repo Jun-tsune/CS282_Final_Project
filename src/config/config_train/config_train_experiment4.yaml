@@ -1,0 +1,27 @@
+training:
+    task: linear_regression
+    data: gaussian
+    task_kwargs: {}
+
+    batch_size: 64
+    learning_rate: 0.0003
+
+    save_every_steps: 10000
+    keep_every_steps: 100000
+
+    train_steps: 20000
+
+    resume_id: null
+    device: cuda
+
+    curriculum:
+        dims:
+            start: 10
+            end: 10
+            inc: 1
+            interval: 500
+        points:
+            start: 32
+            end: 512
+            inc: 32
+            interval: 500

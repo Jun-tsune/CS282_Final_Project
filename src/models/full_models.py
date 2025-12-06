@@ -2,6 +2,7 @@ from typing import Optional
 from src.models.transformer_backbone import *
 from src.models.compressive_transformer_backbone import *
 from src.utils.utils import ModelConfig, CompressModelConfig
+from collections import namedtuple
 
 class TransformerModel(nn.Module):
     def __init__(self, n_dims, n_positions, n_embd, n_layer, n_head, resid_pdrop, embd_pdrop, attn_pdrop):
@@ -166,9 +167,52 @@ class CompressiveTransformerModel(nn.Module):
 
         if output_hidden_states:
             return preds, next_memories, aux_loss, out.hidden_states
-        return preds, next_memories, aux_loss    
+        return preds, next_memories, aux_loss
+    
+    
+Memory = namedtuple("Memory", ["mem", "compressed_mem"])
 
+def build_model(conf_model):
+    """
+    From conf.model (OmegaConf DictConfig),
+    Making TransformerModel / CompressiveTransformerModel
+    """
+    common_kwargs = dict(
+        n_dims=conf_model.n_dims,
+        n_positions=conf_model.n_positions,
+        n_embd=conf_model.n_embd,
+        n_layer=conf_model.n_layer,
+        n_head=conf_model.n_head,
+        resid_pdrop=conf_model.resid_pdrop,
+        embd_pdrop=conf_model.embd_pdrop,
+        attn_pdrop=conf_model.attn_pdrop,
+    )
 
+    family = getattr(conf_model, "model_family", "transformer")
+
+    if family == "transformer":
+        return TransformerModel(**common_kwargs)
+
+    elif family == "compressive":
+        compress_kwargs = dict(
+            mem_len=getattr(conf_model, "mem_len", None),
+            cmem_ratio=getattr(conf_model, "cmem_ratio", 4),
+            cmem_len=getattr(conf_model, "cmem_len", None),
+            recon_attn_dropout=getattr(conf_model, "recon_attn_dropout", 0.0),
+            reconstruction_loss_weight=getattr(
+                conf_model, "reconstruction_loss_weight", 1.0
+            ),
+        )
+        return CompressiveTransformerModel(**common_kwargs, **compress_kwargs)
+
+    else:
+        raise ValueError(f"Unknown model_family: {family}")
+
+def get_relevant_baselines(model, task):
+    # Placeholder implementation: This function was not found in the original files.
+    # It has been added as a stub to resolve an AttributeError.
+    # Please implement the actual logic for getting relevant baselines.
+    return [model]
     
 if __name__ == "__main__":
     B, S, H = 4, 56, 128

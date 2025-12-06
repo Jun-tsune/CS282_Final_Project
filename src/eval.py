@@ -22,7 +22,7 @@ def get_model_from_run(run_path, step=-1, only_conf=False):
     if only_conf:
         return None, conf
 
-    model = build_model(conf.model)
+    model = full_models.build_model(conf.model)
 
     if step == -1:
         # Try to load state.pt first (latest checkpoint)
@@ -93,9 +93,11 @@ def eval_batch(model, task_sampler, xs, xs_p=None):
     if xs_p is None:
         ys = task.evaluate(xs)
         output = model(xs.to(device), ys.to(device))
-        preds = output[0] if isinstance(output, tuple) else output
-        preds = preds.detach()
-        metrics = task.get_metric()(preds.cpu(), ys)
+        if isinstance(output, tuple):
+            pred = output[0]
+        else:
+            pred = output.detach()
+        metrics = task.get_metric()(pred.cpu(), ys)
     else:
         b_size, n_points, _ = xs.shape
         metrics = torch.zeros(b_size, n_points)
@@ -103,10 +105,12 @@ def eval_batch(model, task_sampler, xs, xs_p=None):
             xs_comb = torch.cat((xs[:, :i, :], xs_p[:, i:, :]), dim=1)
             ys = task.evaluate(xs_comb)
 
-            output = model(xs_comb.to(device), ys.to(device), inds=[i])
-            preds = output[0] if isinstance(output, tuple) else output
-            preds = preds.detach()
-            metrics[:, i] = task.get_metric()(preds.cpu(), ys)[:, i]
+            output = model(xs_comb.to(device), ys.to(device), inds=[i]).detach()
+            if isinstance(output, tuple):
+                pred = output[0]
+            else:
+                pred = output.detach()
+            metrics[:, i] = task.get_metric()(pred.cpu(), ys)[:, i]
 
     return metrics
 
@@ -315,6 +319,13 @@ def build_evals(conf, only_standard=True):
 
             evaluation_kwargs[f"scale-{dim}={scale}"] = scaling_args
 
+    """
+    evaluation_kwargs[f"noisyLR"] = {
+        "task_sampler_kwargs": {"renormalize_ys": True, "noise_std": 1},
+        "task_name": "noisy_linear_regression",
+    }
+    """
+
     for name, kwargs in evaluation_kwargs.items():
         # allow kwargs to override base_kwargs values
         evaluation_kwargs[name] = base_kwargs.copy()
@@ -396,7 +407,6 @@ def get_run_metrics(
     return all_metrics
 
 
-
 def conf_to_model_name(conf):
     if conf.model.family == "gpt2":
         return {
@@ -465,6 +475,7 @@ def read_run_dir(run_dir):
     df = pd.DataFrame(all_runs).sort_values("run_name")
     assert len(df) == len(df.run_name.unique())
     return df
+
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
